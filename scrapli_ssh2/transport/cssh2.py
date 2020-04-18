@@ -2,18 +2,16 @@
 import atexit
 import base64
 import time
-import warnings
 from logging import getLogger
 from typing import Optional, Tuple
 
-from scrapli.exceptions import (
-    KeyVerificationFailed,
-    MissingDependencies,
-    ScrapliAuthenticationFailed,
-)
+from scrapli.exceptions import KeyVerificationFailed, ScrapliAuthenticationFailed
 from scrapli.ssh_config import SSHConfig, SSHKnownHosts
 from scrapli.transport.socket import Socket
 from scrapli.transport.transport import Transport
+from ssh2.channel import Channel
+from ssh2.exceptions import AuthenticationError, SSH2Error
+from ssh2.session import Session
 
 LOG = getLogger("transport")
 
@@ -110,30 +108,8 @@ class SSH2Transport(Transport):
         self.auth_strict_key: bool = auth_strict_key
         self.ssh_known_hosts_file: str = ssh_known_hosts_file
 
-        try:
-            # import here so these are optional
-            from ssh2.channel import Channel  # pylint: disable=C0415
-            from ssh2.session import Session  # pylint: disable=C0415
-            from ssh2.exceptions import AuthenticationError, SSH2Error  # pylint: disable=C0415
-
-            self.lib_session = Session
-            self.session: Session = None
-            self.channel: Channel = None
-            self.lib_auth_exception = AuthenticationError
-            self.lib_base_exception = SSH2Error
-        except ModuleNotFoundError as exc:
-            err = f"Module '{exc.name}' not installed!"
-            msg = f"***** {err} {'*' * (80 - len(err))}"
-            fix = (
-                f"To resolve this issue, install '{exc.name}'. You can do this in one of the "
-                "following ways:\n"
-                "1: 'pip install -r requirements-ssh2.txt'\n"
-                "2: 'pip install scrapli[ssh2]'"
-            )
-            warning = "\n" + msg + "\n" + fix + "\n" + msg
-            warnings.warn(warning)
-            LOG.warning(warning)
-            raise MissingDependencies
+        self.session: Session = None
+        self.channel: Channel = None
 
         self.socket = Socket(host=self.host, port=self.port, timeout=self.timeout_socket)
 
@@ -181,7 +157,7 @@ class SSH2Transport(Transport):
         if not self.socket.socket_isalive():
             self.socket.socket_open()
         self.session_lock.acquire()
-        self.session = self.lib_session()
+        self.session = Session()
         self.set_timeout(self.timeout_transport)
         try:
             self.session.handshake(self.socket.sock)
@@ -288,11 +264,11 @@ class SSH2Transport(Transport):
         """
         try:
             self.session.userauth_publickey_fromfile(self.auth_username, self.auth_private_key)
-        except self.lib_auth_exception as exc:
+        except AuthenticationError as exc:
             LOG.critical(
                 f"Public key authentication with host {self.host} failed. Exception: {exc}."
             )
-        except self.lib_base_exception as exc:
+        except SSH2Error as exc:
             LOG.critical(
                 "Unknown error occurred during public key authentication with host "
                 f"{self.host}; Exception: {exc}"
@@ -314,7 +290,7 @@ class SSH2Transport(Transport):
         """
         try:
             self.session.userauth_password(self.auth_username, self.auth_password)
-        except self.lib_auth_exception as exc:
+        except AuthenticationError as exc:
             LOG.critical(f"Password authentication with host {self.host} failed. Exception: {exc}.")
         except Exception as exc:
             LOG.critical(
@@ -346,7 +322,7 @@ class SSH2Transport(Transport):
                 "Keyboard interactive authentication not supported in your ssh2-python version. "
                 f"Exception: {exc}"
             )
-        except self.lib_auth_exception as exc:
+        except AuthenticationError as exc:
             LOG.critical(
                 f"Keyboard interactive authentication with host {self.host} failed. "
                 f"Exception: {exc}."
