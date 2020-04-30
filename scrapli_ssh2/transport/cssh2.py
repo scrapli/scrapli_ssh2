@@ -1,5 +1,4 @@
 """scrapli_ssh2.transport.cssh2"""
-import atexit
 import base64
 import time
 from logging import getLogger
@@ -234,8 +233,9 @@ class SSH2Transport(Transport):
                 return
             if not self.auth_password or not self.auth_username:
                 msg = (
-                    f"Public key authentication to host {self.host} failed. Missing username or"
-                    " password unable to attempt password authentication."
+                    f"Failed to authenticate to host {self.host} with private key "
+                    f"`{self.auth_private_key.decode()}`. Unable to continue authentication, "
+                    "missing username, password, or both."
                 )
                 LOG.critical(msg)
                 raise ScrapliAuthenticationFailed(msg)
@@ -462,31 +462,6 @@ class SSH2Transport(Transport):
             set_timeout = self.timeout_transport
         # ssh2-python expects timeout in milliseconds
         self.session.set_timeout(set_timeout * 1000)
-
-    def _keepalive_network(self) -> None:
-        """
-        ssh2-specific keepalive network
-
-        Without manually closing sessions ssh2-python seems to block and keep scripts from exiting.
-        This is a hacky fix for that by force killing the transport connection atexit.
-
-        Args:
-            N/A
-
-        Returns:
-            N/A  # noqa: DAR202
-
-        Raises:
-            N/A
-
-        """
-
-        def kill_transport() -> None:
-            if self.isalive():
-                self.close()
-
-        atexit.register(kill_transport)
-        super()._keepalive_network()
 
     def _keepalive_standard(self) -> None:
         """
