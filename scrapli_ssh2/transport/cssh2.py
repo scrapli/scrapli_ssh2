@@ -263,8 +263,9 @@ class SSH2Transport(Transport):
 
         """
         try:
-            self.session.userauth_publickey_fromfile(self.auth_username,
-                                                     self.auth_private_key.encode())
+            self.session.userauth_publickey_fromfile(
+                self.auth_username, self.auth_private_key.encode()
+            )
         except AuthenticationError as exc:
             LOG.critical(
                 f"Public key authentication with host {self.host} failed. Exception: {exc}."
