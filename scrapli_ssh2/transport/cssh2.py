@@ -234,7 +234,7 @@ class SSH2Transport(Transport):
             if not self.auth_password or not self.auth_username:
                 msg = (
                     f"Failed to authenticate to host {self.host} with private key "
-                    f"`{self.auth_private_key.decode()}`. Unable to continue authentication, "
+                    f"`{self.auth_private_key}`. Unable to continue authentication, "
                     "missing username, password, or both."
                 )
                 LOG.critical(msg)
@@ -263,7 +263,8 @@ class SSH2Transport(Transport):
 
         """
         try:
-            self.session.userauth_publickey_fromfile(self.auth_username, self.auth_private_key)
+            self.session.userauth_publickey_fromfile(self.auth_username,
+                                                     self.auth_private_key.encode())
         except AuthenticationError as exc:
             LOG.critical(
                 f"Public key authentication with host {self.host} failed. Exception: {exc}."
