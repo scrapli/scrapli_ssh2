@@ -3,15 +3,7 @@ lint:
 	python -m black .
 	python -m pylama .
 	python -m pydocstyle .
-	python -m mypy --strict scrapli_ssh2/
-
-lint_full:
-	python -m isort -rc -y .
-	python -m black .
-	python -m pylama .
-	python -m pydocstyle .
-	python -m mypy --strict scrapli_ssh2/
-	find scrapli_ssh2 -type f \( -iname "*.py" ! -iname "ptyprocess.py" \) | xargs darglint -x
+	python -m mypy scrapli_ssh2/
 
 cov:
 	python -m pytest \
