@@ -2,6 +2,8 @@
 """scrapli_ssh2 - ssh2-python transport plugin for scrapli"""
 import setuptools
 
+from scrapli_ssh2 import __version__
+
 __author__ = "Carl Montanari"
 
 with open("README.md", "r", encoding="utf-8") as f:
@@ -9,7 +11,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setuptools.setup(
     name="scrapli_ssh2",
-    version="2020.04.30",
+    version=__version__,
     author=__author__,
     author_email="carl.r.montanari@gmail.com",
     description="ssh2-python transport plugin for the scrapli SSH|Telnet screen scraping library",
