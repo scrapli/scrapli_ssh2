@@ -17,7 +17,7 @@ setuptools.setup(
     description="ssh2-python transport plugin for the scrapli SSH|Telnet screen scraping library",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://github.com/carlmontanari/scrapli_paramiko",
+    url="https://github.com/scrapli/scrapli_paramiko",
     packages=setuptools.find_packages(),
     install_requires=["ssh2-python>=0.18.0-1"],
     extras_require={},
