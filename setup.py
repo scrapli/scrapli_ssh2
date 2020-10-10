@@ -9,6 +9,9 @@ __author__ = "Carl Montanari"
 with open("README.md", "r", encoding="utf-8") as f:
     README = f.read()
 
+with open(f"requirements.txt", "r") as f:
+    INSTALL_REQUIRES = f.read().splitlines()
+
 setuptools.setup(
     name="scrapli_ssh2",
     version=__version__,
@@ -19,7 +22,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/scrapli/scrapli_ssh2",
     packages=setuptools.find_packages(),
-    install_requires=["scrapli>=2020.06.06", "ssh2-python>=0.22.0,<1.0.0"],
+    install_requires=INSTALL_REQUIRES,
     extras_require={},
     classifiers=[
         "License :: OSI Approved :: MIT License",

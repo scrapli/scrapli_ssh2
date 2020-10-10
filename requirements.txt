@@ -1,3 +1,2 @@
-# pinning as the 0.20.0/0.21.0 did not have all the appropriate c files causing install failure on macos
 ssh2-python>=0.22.0,<1.0.0
-scrapli>=2020.06.06
+scrapli>=2020.10.10

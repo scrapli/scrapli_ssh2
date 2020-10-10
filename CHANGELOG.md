@@ -1,6 +1,12 @@
 CHANGELOG
 =======
 
+# 2020.10.10
+
+- Remove keepalive stuff for now (in line w/ scrapli core)
+- Remove transport session locks
+
+
 # 2020.10.07
 
 - Dev pin bumps

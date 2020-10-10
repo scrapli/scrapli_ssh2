@@ -29,7 +29,6 @@
 </summary>
 <pre><code class="python">&#34;&#34;&#34;scrapli_ssh2.transport.cssh2&#34;&#34;&#34;
 import base64
-import time
 from logging import getLogger
 from typing import Optional, Tuple
 
@@ -68,10 +67,6 @@ class SSH2Transport(Transport):
         timeout_socket: int = 5,
         timeout_transport: int = 5,
         timeout_exit: bool = True,
-        keepalive: bool = False,
-        keepalive_interval: int = 30,
-        keepalive_type: str = &#34;&#34;,
-        keepalive_pattern: str = &#34;\005&#34;,
         ssh_config_file: str = &#34;&#34;,
         ssh_known_hosts_file: str = &#34;&#34;,
     ) -&gt; None:
@@ -90,20 +85,7 @@ class SSH2Transport(Transport):
             auth_strict_key: True/False to enforce strict key checking (default is True)
             timeout_socket: timeout for establishing socket in seconds
             timeout_transport: timeout for ssh2 transport in seconds
-            timeout_exit: True/False close transport if timeout encountered. If False and keepalives
-                are in use, keepalives will prevent program from exiting so you should be sure to
-                catch Timeout exceptions and handle them appropriately
-            keepalive: whether or not to try to keep session alive
-            keepalive_interval: interval to use for session keepalives
-            keepalive_type: network|standard -- &#39;network&#39; sends actual characters over the
-                transport channel. This is useful for network-y type devices that may not support
-                &#39;standard&#39; keepalive mechanisms. &#39;standard&#39; attempts to ssh2-python built in
-                keepalive method (using standard openssh keepalive)
-            keepalive_pattern: pattern to send to keep network channel alive. Default is
-                u&#39;\005&#39; which is equivalent to &#39;ctrl+e&#39;. This pattern moves cursor to end of the
-                line which should be an innocuous pattern. This will only be entered *if* a lock
-                can be acquired. This is only applicable if using keepalives and if the keepalive
-                type is &#39;network&#39;
+            timeout_exit: True/False close transport if timeout encountered
             ssh_config_file: string to path for ssh config file
             ssh_known_hosts_file: string to path for ssh known hosts file
 
@@ -125,10 +107,6 @@ class SSH2Transport(Transport):
             timeout_socket,
             timeout_transport,
             timeout_exit,
-            keepalive,
-            keepalive_interval,
-            keepalive_type,
-            keepalive_pattern,
         )
 
         self.auth_username: str = auth_username or cfg_user
@@ -185,7 +163,7 @@ class SSH2Transport(Transport):
         &#34;&#34;&#34;
         if not self.socket.socket_isalive():
             self.socket.socket_open()
-        self.session_lock.acquire()
+
         self.session = Session()
         self.set_timeout(self.timeout_transport)
         try:
@@ -194,7 +172,6 @@ class SSH2Transport(Transport):
             LOG.critical(
                 f&#34;Failed to complete handshake with host {self.host}; &#34; f&#34;Exception: {exc}&#34;
             )
-            self.session_lock.release()
             raise exc
 
         if self.auth_strict_key:
@@ -206,12 +183,9 @@ class SSH2Transport(Transport):
         if not self._isauthenticated():
             msg = f&#34;Authentication to host {self.host} failed&#34;
             LOG.critical(msg)
-            self.session_lock.release()
             raise ScrapliAuthenticationFailed(msg)
+
         self._open_channel()
-        if self.keepalive:
-            self._session_keepalive()
-        self.session_lock.release()
 
     def _verify_key(self) -&gt; None:
         &#34;&#34;&#34;
@@ -416,11 +390,9 @@ class SSH2Transport(Transport):
             N/A
 
         &#34;&#34;&#34;
-        self.session_lock.acquire()
         self.channel.close()
         LOG.debug(f&#34;Channel to host {self.host} closed&#34;)
         self.socket.socket_close()
-        self.session_lock.release()
 
     def isalive(self) -&gt; bool:
         &#34;&#34;&#34;
@@ -474,7 +446,7 @@ class SSH2Transport(Transport):
         &#34;&#34;&#34;
         self.channel.write(channel_input)
 
-    def set_timeout(self, timeout: Optional[int] = None) -&gt; None:
+    def set_timeout(self, timeout: int) -&gt; None:
         &#34;&#34;&#34;
         Set session timeout
 
@@ -488,34 +460,8 @@ class SSH2Transport(Transport):
             N/A
 
         &#34;&#34;&#34;
-        if isinstance(timeout, int):
-            set_timeout = timeout
-        else:
-            set_timeout = self.timeout_transport
         # ssh2-python expects timeout in milliseconds
-        self.session.set_timeout(set_timeout * 1000)
-
-    def _keepalive_standard(self) -&gt; None:
-        &#34;&#34;&#34;
-        Send &#34;out of band&#34; (protocol level) keepalives to devices.
-
-        Args:
-            N/A
-
-        Returns:
-            N/A  # noqa: DAR202
-
-        Raises:
-            N/A
-
-        &#34;&#34;&#34;
-        self.session.keepalive_config(want_reply=False, interval=self.keepalive_interval)
-        while True:
-            if not self.isalive():
-                return
-            LOG.debug(&#34;Sending &#39;standard&#39; keepalive.&#34;)
-            self.session.keepalive_send()
-            time.sleep(self.keepalive_interval / 10)</code></pre>
+        self.session.set_timeout(timeout * 1000)</code></pre>
 </details>
 </section>
 <section>
@@ -529,7 +475,7 @@ class SSH2Transport(Transport):
 <dl>
 <dt id="scrapli_ssh2.transport.cssh2.SSH2Transport"><code class="flex name class">
 <span>class <span class="ident">SSH2Transport</span></span>
-<span>(</span><span>host: str, port: int = -1, auth_username: str = '', auth_private_key: str = '', auth_password: str = '', auth_strict_key: bool = True, timeout_socket: int = 5, timeout_transport: int = 5, timeout_exit: bool = True, keepalive: bool = False, keepalive_interval: int = 30, keepalive_type: str = '', keepalive_pattern: str = '\x05', ssh_config_file: str = '', ssh_known_hosts_file: str = '')</span>
+<span>(</span><span>host: str, port: int = -1, auth_username: str = '', auth_private_key: str = '', auth_password: str = '', auth_strict_key: bool = True, timeout_socket: int = 5, timeout_transport: int = 5, timeout_exit: bool = True, ssh_config_file: str = '', ssh_known_hosts_file: str = '')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Helper class that provides a standard way to create an ABC using
@@ -556,24 +502,7 @@ SSH2Transport &lt;- Transport (ABC)</p>
 <dt><strong><code>timeout_transport</code></strong></dt>
 <dd>timeout for ssh2 transport in seconds</dd>
 <dt><strong><code>timeout_exit</code></strong></dt>
-<dd>True/False close transport if timeout encountered. If False and keepalives
-are in use, keepalives will prevent program from exiting so you should be sure to
-catch Timeout exceptions and handle them appropriately</dd>
-<dt><strong><code>keepalive</code></strong></dt>
-<dd>whether or not to try to keep session alive</dd>
-<dt><strong><code>keepalive_interval</code></strong></dt>
-<dd>interval to use for session keepalives</dd>
-<dt><strong><code>keepalive_type</code></strong></dt>
-<dd>network|standard &ndash; 'network' sends actual characters over the
-transport channel. This is useful for network-y type devices that may not support
-'standard' keepalive mechanisms. 'standard' attempts to ssh2-python built in
-keepalive method (using standard openssh keepalive)</dd>
-<dt><strong><code>keepalive_pattern</code></strong></dt>
-<dd>pattern to send to keep network channel alive. Default is
-u'' which is equivalent to 'ctrl+e'. This pattern moves cursor to end of the
-line which should be an innocuous pattern. This will only be entered <em>if</em> a lock
-can be acquired. This is only applicable if using keepalives and if the keepalive
-type is 'network'</dd>
+<dd>True/False close transport if timeout encountered</dd>
 <dt><strong><code>ssh_config_file</code></strong></dt>
 <dd>string to path for ssh config file</dd>
 <dt><strong><code>ssh_known_hosts_file</code></strong></dt>
@@ -600,10 +529,6 @@ type is 'network'</dd>
         timeout_socket: int = 5,
         timeout_transport: int = 5,
         timeout_exit: bool = True,
-        keepalive: bool = False,
-        keepalive_interval: int = 30,
-        keepalive_type: str = &#34;&#34;,
-        keepalive_pattern: str = &#34;\005&#34;,
         ssh_config_file: str = &#34;&#34;,
         ssh_known_hosts_file: str = &#34;&#34;,
     ) -&gt; None:
@@ -622,20 +547,7 @@ type is 'network'</dd>
             auth_strict_key: True/False to enforce strict key checking (default is True)
             timeout_socket: timeout for establishing socket in seconds
             timeout_transport: timeout for ssh2 transport in seconds
-            timeout_exit: True/False close transport if timeout encountered. If False and keepalives
-                are in use, keepalives will prevent program from exiting so you should be sure to
-                catch Timeout exceptions and handle them appropriately
-            keepalive: whether or not to try to keep session alive
-            keepalive_interval: interval to use for session keepalives
-            keepalive_type: network|standard -- &#39;network&#39; sends actual characters over the
-                transport channel. This is useful for network-y type devices that may not support
-                &#39;standard&#39; keepalive mechanisms. &#39;standard&#39; attempts to ssh2-python built in
-                keepalive method (using standard openssh keepalive)
-            keepalive_pattern: pattern to send to keep network channel alive. Default is
-                u&#39;\005&#39; which is equivalent to &#39;ctrl+e&#39;. This pattern moves cursor to end of the
-                line which should be an innocuous pattern. This will only be entered *if* a lock
-                can be acquired. This is only applicable if using keepalives and if the keepalive
-                type is &#39;network&#39;
+            timeout_exit: True/False close transport if timeout encountered
             ssh_config_file: string to path for ssh config file
             ssh_known_hosts_file: string to path for ssh known hosts file
 
@@ -657,10 +569,6 @@ type is 'network'</dd>
             timeout_socket,
             timeout_transport,
             timeout_exit,
-            keepalive,
-            keepalive_interval,
-            keepalive_type,
-            keepalive_pattern,
         )
 
         self.auth_username: str = auth_username or cfg_user
@@ -717,7 +625,7 @@ type is 'network'</dd>
         &#34;&#34;&#34;
         if not self.socket.socket_isalive():
             self.socket.socket_open()
-        self.session_lock.acquire()
+
         self.session = Session()
         self.set_timeout(self.timeout_transport)
         try:
@@ -726,7 +634,6 @@ type is 'network'</dd>
             LOG.critical(
                 f&#34;Failed to complete handshake with host {self.host}; &#34; f&#34;Exception: {exc}&#34;
             )
-            self.session_lock.release()
             raise exc
 
         if self.auth_strict_key:
@@ -738,12 +645,9 @@ type is 'network'</dd>
         if not self._isauthenticated():
             msg = f&#34;Authentication to host {self.host} failed&#34;
             LOG.critical(msg)
-            self.session_lock.release()
             raise ScrapliAuthenticationFailed(msg)
+
         self._open_channel()
-        if self.keepalive:
-            self._session_keepalive()
-        self.session_lock.release()
 
     def _verify_key(self) -&gt; None:
         &#34;&#34;&#34;
@@ -948,11 +852,9 @@ type is 'network'</dd>
             N/A
 
         &#34;&#34;&#34;
-        self.session_lock.acquire()
         self.channel.close()
         LOG.debug(f&#34;Channel to host {self.host} closed&#34;)
         self.socket.socket_close()
-        self.session_lock.release()
 
     def isalive(self) -&gt; bool:
         &#34;&#34;&#34;
@@ -1006,7 +908,7 @@ type is 'network'</dd>
         &#34;&#34;&#34;
         self.channel.write(channel_input)
 
-    def set_timeout(self, timeout: Optional[int] = None) -&gt; None:
+    def set_timeout(self, timeout: int) -&gt; None:
         &#34;&#34;&#34;
         Set session timeout
 
@@ -1020,34 +922,8 @@ type is 'network'</dd>
             N/A
 
         &#34;&#34;&#34;
-        if isinstance(timeout, int):
-            set_timeout = timeout
-        else:
-            set_timeout = self.timeout_transport
         # ssh2-python expects timeout in milliseconds
-        self.session.set_timeout(set_timeout * 1000)
-
-    def _keepalive_standard(self) -&gt; None:
-        &#34;&#34;&#34;
-        Send &#34;out of band&#34; (protocol level) keepalives to devices.
-
-        Args:
-            N/A
-
-        Returns:
-            N/A  # noqa: DAR202
-
-        Raises:
-            N/A
-
-        &#34;&#34;&#34;
-        self.session.keepalive_config(want_reply=False, interval=self.keepalive_interval)
-        while True:
-            if not self.isalive():
-                return
-            LOG.debug(&#34;Sending &#39;standard&#39; keepalive.&#34;)
-            self.session.keepalive_send()
-            time.sleep(self.keepalive_interval / 10)</code></pre>
+        self.session.set_timeout(timeout * 1000)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1087,11 +963,9 @@ type is 'network'</dd>
         N/A
 
     &#34;&#34;&#34;
-    self.session_lock.acquire()
     self.channel.close()
     LOG.debug(f&#34;Channel to host {self.host} closed&#34;)
-    self.socket.socket_close()
-    self.session_lock.release()</code></pre>
+    self.socket.socket_close()</code></pre>
 </details>
 </dd>
 <dt id="scrapli_ssh2.transport.cssh2.SSH2Transport.isalive"><code class="name flex">
@@ -1169,7 +1043,7 @@ type is 'network'</dd>
     &#34;&#34;&#34;
     if not self.socket.socket_isalive():
         self.socket.socket_open()
-    self.session_lock.acquire()
+
     self.session = Session()
     self.set_timeout(self.timeout_transport)
     try:
@@ -1178,7 +1052,6 @@ type is 'network'</dd>
         LOG.critical(
             f&#34;Failed to complete handshake with host {self.host}; &#34; f&#34;Exception: {exc}&#34;
         )
-        self.session_lock.release()
         raise exc
 
     if self.auth_strict_key:
@@ -1190,12 +1063,9 @@ type is 'network'</dd>
     if not self._isauthenticated():
         msg = f&#34;Authentication to host {self.host} failed&#34;
         LOG.critical(msg)
-        self.session_lock.release()
         raise ScrapliAuthenticationFailed(msg)
-    self._open_channel()
-    if self.keepalive:
-        self._session_keepalive()
-    self.session_lock.release()</code></pre>
+
+    self._open_channel()</code></pre>
 </details>
 </dd>
 <dt id="scrapli_ssh2.transport.cssh2.SSH2Transport.read"><code class="name flex">
@@ -1236,7 +1106,7 @@ type is 'network'</dd>
 </details>
 </dd>
 <dt id="scrapli_ssh2.transport.cssh2.SSH2Transport.set_timeout"><code class="name flex">
-<span>def <span class="ident">set_timeout</span></span>(<span>self, timeout: Optional[int] = None) ‑> NoneType</span>
+<span>def <span class="ident">set_timeout</span></span>(<span>self, timeout: int) ‑> NoneType</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Set session timeout</p>
@@ -1254,7 +1124,7 @@ type is 'network'</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def set_timeout(self, timeout: Optional[int] = None) -&gt; None:
+<pre><code class="python">def set_timeout(self, timeout: int) -&gt; None:
     &#34;&#34;&#34;
     Set session timeout
 
@@ -1268,12 +1138,8 @@ type is 'network'</dd>
         N/A
 
     &#34;&#34;&#34;
-    if isinstance(timeout, int):
-        set_timeout = timeout
-    else:
-        set_timeout = self.timeout_transport
     # ssh2-python expects timeout in milliseconds
-    self.session.set_timeout(set_timeout * 1000)</code></pre>
+    self.session.set_timeout(timeout * 1000)</code></pre>
 </details>
 </dd>
 <dt id="scrapli_ssh2.transport.cssh2.SSH2Transport.write"><code class="name flex">
