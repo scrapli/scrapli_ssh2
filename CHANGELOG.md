@@ -1,6 +1,9 @@
 CHANGELOG
 =======
 
+# XXXX.XX.XX
+
+
 # 2020.10.10
 
 - Remove keepalive stuff for now (in line w/ scrapli core)
