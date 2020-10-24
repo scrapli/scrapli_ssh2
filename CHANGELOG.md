@@ -1,7 +1,8 @@
 CHANGELOG
 =======
 
-# XXXX.XX.XX
+# 2020.10.24
+- Update ssh2-python pin -- keyboard interactive auth bug has been fixed!
 
 
 # 2020.10.10
