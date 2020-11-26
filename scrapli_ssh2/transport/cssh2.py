@@ -267,8 +267,11 @@ class SSH2Transport(Transport):
         """
         try:
             self.session.userauth_password(self.auth_username, self.auth_password)
-        except AuthenticationError as exc:
-            LOG.critical(f"Password authentication with host {self.host} failed. Exception: {exc}.")
+        except AuthenticationError:
+            LOG.critical(
+                f"Password authentication with host {self.host} failed. Exception: "
+                f"`AuthenticationError`."
+            )
         except Exception as exc:
             LOG.critical(
                 "Unknown error occurred during password authentication with host "
@@ -299,10 +302,10 @@ class SSH2Transport(Transport):
                 "Keyboard interactive authentication not supported in your ssh2-python version. "
                 f"Exception: {exc}"
             )
-        except AuthenticationError as exc:
+        except AuthenticationError:
             LOG.critical(
                 f"Keyboard interactive authentication with host {self.host} failed. "
-                f"Exception: {exc}."
+                f"Exception: `AuthenticationError`."
             )
         except Exception as exc:
             LOG.critical(
